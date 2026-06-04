@@ -57,7 +57,8 @@ Here are the components of my architecture that powers Still200:
   UI updates using SSE (Server Sent Events) backed by [Redis pub/sub](https://redis.io/docs/latest/develop/pubsub/).
 * **Observability** - [Pydantic Logfire](https://pydantic.dev/logfire)
 
-Here's a high-level view of how the pieces fit together:
+Here's a high-level illustration of how the pieces fit together before we look at the components
+in more detail.
 
 ```mermaid
 flowchart TD
@@ -198,21 +199,21 @@ Here are a few things I've learnt, and how I solved or I'm planning how to solve
 
 
 1. **Endpoint Timeouts**
-An endpoint that hangs for 45 seconds without responding is arguably just as broken as an outright 502 Bad Gateway.
-If a user's target service experiences an unhandled deadlock and leaves connections open,
-your background worker pool can easily get starved. If your worker processes are sitting around waiting on slow endpoints,
-they will miss the schedules for healthy endpoints, causing the entire platform to lag.
-
-The fix here was to enforce strict timeouts. `httpx` easily allows one to do this.
-If a target endpoint can't deliver within the set time window, the connection is instantly severed,
-the failure is logged, and the worker event loop is freed up for the next job.
+    An endpoint that hangs for 45 seconds without responding is arguably just as broken as an outright 502 Bad Gateway.
+    If a user's target service experiences an unhandled deadlock and leaves connections open,
+    your background worker pool can easily get starved. If your worker processes are sitting around waiting on slow endpoints,
+    they will miss the schedules for healthy endpoints, causing the entire platform to lag.
+    
+    The fix here was to enforce strict timeouts. `httpx` easily allows one to do this.
+    If a target endpoint can't deliver within the set time window, the connection is instantly severed,
+    the failure is logged, and the worker event loop is freed up for the next job.
 
 2. **The False Alarm Problem**
-Networks are noisy. A single failed HTTP ping doesn't necessarily mean a backend is dead; it could be a transient routing glitch, a dropped packet, or a momentary load spike on the host. If your system fires an incident alert on the very first failure, your app becomes spammy.
+    Networks are noisy. A single failed HTTP ping doesn't necessarily mean a backend is dead; it could be a transient routing glitch, a dropped packet, or a momentary load spike on the host. If your system fires an incident alert on the very first failure, your app becomes spammy.
 
-The fix is to implement an explicit "Unhealthy Threshold".
-Instead of escalating directly to NATS on a single failure, a failed check increments a counter
-inside a Redis hash for that specific monitor. The system only flags an incident and sends a push notification if a monitor fails three consecutive checks.
+    The fix is to implement an explicit "Unhealthy Threshold".
+    Instead of escalating directly to NATS on a single failure, a failed check increments a counter
+    inside a Redis hash for that specific monitor. The system only flags an incident and sends a push notification if a monitor fails three consecutive checks.
 
 
 These were just the first few hurdles of bringing Still200 to life.
