@@ -223,7 +223,7 @@ These were just the first few hurdles of bringing Still200 to life.
 As the user base grows and traffic patterns shift, I fully expect to run into new bottlenecks,
 weird networking anomalies, and edge cases I haven't even conceived of yet.
 
-But that’s the beauty of building in public. Every hard lesson is just engineering data—and fodder for the next blog post 😃
+But that’s the beauty of building in public. Every hard lesson is just engineering data...and fodder for the next blog post 😃
 
 ## What's Next for Still200?
 
@@ -232,7 +232,7 @@ But the work doesn't stop here. There's still a lot more to do, and I'm excited 
 
 * **Lifting the Monitor Limits:** Right now, I have limited the number of monitors to 3 per user as I gather
   initial feedback and monitor performance. I will be removing this restriction very soon and also introduce a subscription model.
-* **More Notification channels:**
+* **More Notification channels**
 * **Expanding the Ecosystem:** Bringing the interface to the desktop with dedicated web and macOS apps.
 * **Rewrite some components:** I'm especially keeping a close eye on the checker worker.
   As the number of concurrent monitors scales into the tens of thousands, Python's runtime memory
