@@ -24,10 +24,10 @@ One afternoon, I needed to generate some art and opened my AI image generation a
 Nothing loaded. I force-closed and reopened the app but still, a blank screen.
 This had never happened before.
 
-I pinged my root endpoint directly and it returned a `502 Bad Gateway` error.
-That was when it hit me something was wrong with my server.
+I opened my MacBook, launched a terminal and pinged my root endpoint directly.
+It returned a `502 Bad Gateway` error. That was when it hit me something was wrong with my server.
 I logged into my Railway account and restarted the API service. One minute later
-everything was online.
+everything was back online. To be honest, I'm not sure what had gone wrong or for how long it was down.
 
 I immediately went looking for a simple tool to monitor my APIs.
 I looked at existing tools but they were either too bloated with enterprise features
@@ -47,25 +47,25 @@ Here are the components of my architecture that powers Still200:
   and available on the [App Store](https://apps.apple.com/us/app/still200/id6770858177).
   I chose to start with a native mobile app for the client interface because I'm conversant with Swift,
   I find it elegant to write, and offers an incredible user experience.
-* **API** - A purely async REST API built with FastAPI and Python.
+* **API** - A purely async REST API built with FastAPI, Pydantic schema validation and Python.
 * **Authentication & User Management** - [Supabase Auth](https://supabase.com/docs/guides/auth)
 * **Database** - PostgreSQL hosted on [Supabase](https://supabase.com).
 * **Schedule keeper and Job Dispatcher** - Instead of pulling in a 3rd party library for
   scheduling and task running, I built my own using [Redis sorted sets](https://redis.io/docs/latest/develop/data-types/sorted-sets) to manage high-frequency probing with high precision.
 * **Incident Notifications** - [NATS messaging system](https://nats.io)
-* **Live Telemetry** - Real-time monitoring data streams from the backend to the iOS app for
+* **Live UI Updates** - Real-time monitoring data streams from the backend to the iOS app for
   UI updates using SSE (Server Sent Events) backed by [Redis pub/sub](https://redis.io/docs/latest/develop/pubsub/).
 * **Observability** - [Pydantic Logfire](https://pydantic.dev/logfire)
 
 Here's a high-level illustration of how the pieces fit together before we look at the components
-in more detail.
+in more detail right below.
 
 ```mermaid
 flowchart TD
     A["iOS app"]
     B["FastAPI Backend"]
     C["Redis\nZSET"]
-    D["Background workers"]
+    D["Background checker workers"]
     E["Target Endpoints\nAPIs · DBs · Services"]
     F["NATS JetStream"]
     G["Notification Workers"]
@@ -77,9 +77,9 @@ flowchart TD
     C -->|ZMPOP| D
     D -->|httpx ping| E
     D -->|incident| F
-    D -->|ZADD|C
-    F -->|incident|G
-    G --> |POST to APN Server|H
+    D -->|ZADD| C
+    F -->|incident| G
+    G --> |POST to APN Server| H
     H -.->|push alert to user| A
 ```
 
@@ -98,14 +98,14 @@ In my philosophy of keeping things simple, I turned to Redis and sorted sets in 
 If you're unfamiliar with them, have a look at the [docs](https://redis.io/docs/latest/develop/data-types/sorted-sets/)
 to understand how they work. 
 
-For my use case, I'd add a monitor ID with its score being the next time (UNIX timestamp)
+For my use case, I'd add a monitor ID with its score being the next time (epoch unix timestamp)
 when its check is due as the score. This would look something like:
 ```bash
 # ZADD key score member
 ZADD monitor_schedule 1780503850 "9e34e9d5-7ca9-482f-b4df-ec1cc2faac62"
 ```
 I then have a lean Python script constantly polling the sorted set for due
-items. It specifically looks for any members with a score less than or equal to the current epoch timestamp.
+items. It specifically looks for any members with a score less than or equal to the current epoch unix timestamp.
 
 When a monitor ID is pulled, the scheduler instantly pushes it to an execution queue
 for a background worker (checker) to pick up.
@@ -130,7 +130,7 @@ new future timestamp.
 In future, I will introduce another process that can check the `processing_queue` for items that might
 have been sitting there for too long and maybe recycle them into the main task queue.
 
-### Live Telemetry
+### Live UI Updates
 
 To make the iOS app feel alive, I wanted real-time updates to the UI as monitors were checked.
 If a user has the app open, they'll notice some monitor details like last check time or even health
@@ -144,9 +144,10 @@ knowing who will receive them, and subscribers listen to channels to receive tho
 
 Here's how it operates:
 
-1. **Publish**: The moment a background worker finishes an endpoint check, it publishes the serialized payload to a specific Redis channel.
-2. **Subscribe**: On the API layer, a dedicated FastAPI streaming endpoint handles open connections from the iOS client. This endpoint subscribes to the Redis channel at runtime.
-3. **Stream**: As soon as a message drops into the channel, FastAPI yields the data, streaming it instantly across the open HTTP connection straight to the client. The SwiftUI app intercepts the event and smoothly mutates the UI state.
+1. **Publish**: The moment a background worker finishes an endpoint check, it publishes
+  the serialized payload with the latest check results to a specific Redis channel.
+2. **Subscribe**: On the API layer, a dedicated FastAPI streaming endpoint handles open connections from the iOS client. This      endpoint subscribes to the Redis channel at runtime.
+3. **Stream**: As soon as a message drops into the channel, FastAPI yields the data, streaming it instantly across the open HTTP connection straight to the client. The iOS app handles the event and smoothly mutates the UI state.
 
 One thing to note is that Redis Pub/Sub offers at-most-once-delivery guarantee.
 I did not mind this because even if an update is missed, it's nothing critical and the
@@ -154,9 +155,9 @@ app does not break. A user would still be able to see up-to-date data if they re
 
 ### Incidents and Notifications
 
-Systems fail. That reality is the entire reason I built Still200. When a worker detects that an endpoint
-is degraded or unhealthy, users expect to know immediately that something
-is wrong so they can act quickly.
+Systems fail. That reality is the entire reason I built Still200.
+When a worker detects that an endpoint is degraded or unhealthy, users expect to know
+immediately that something is wrong so they can act quickly.
 
 Notifications are a very critical part of an uptime monitor.
 Users missing notifications or notifications arriving late would mean the app isn't performing its core function.
@@ -170,11 +171,12 @@ but felt it would be overkill for my system.
 NATS also has much lower administrative complexity than Kafka. Remember, my goal was to keep things _simple_.
 
 To achieve message persistence and durability, I enabled NATS JetStream.
-This allows us to ensure that notification events are never lost in transit;
+This allows me to ensure that notification events are never lost in transit;
 a message is only acknowledged and removed from the stream once the notification
 worker has successfully dispatched the alert.
 
 When background checker identifies an issue, it triggers a two-step workflow:
+
 1. writes an incident to the Postgres database with details about the failure.
 Serves as a historical source of truth.
 2. publishes a message with the incident details to the notifications subject.
@@ -184,8 +186,9 @@ Once a message is received, the details from the data are properly formatted bas
 Right now, Still200 supports Apple Push Notifications, but I'll be adding more channels
 (email, slack, discord) down the road.
 
-The notifications worker, after formatting the payload that APN expects, then does a `HTTP/2 POST` request to Apple servers
-which will then deliver the notification to the user's app. The message from the stream is then acknowledged.
+The notifications worker, after formatting the payload that APN expects,
+does a `HTTP/2 POST` request to Apple servers which will then deliver the notification
+to the user's app. The message from the stream is then acknowledged.
 All this happens in **under 500ms**.
 
 NATS has been quite impressive so far.
@@ -211,8 +214,8 @@ Here are a few things I've learnt, and how I solved or I'm planning how to solve
 2. **The False Alarm Problem**
     Networks are noisy. A single failed HTTP ping doesn't necessarily mean a backend is dead; it could be a transient routing glitch, a dropped packet, or a momentary load spike on the host. If your system fires an incident alert on the very first failure, your app becomes spammy.
 
-    The fix is to implement an explicit "Unhealthy Threshold".
-    Instead of escalating directly to NATS on a single failure, a failed check increments a counter
+    The fix is to implement an explicit unhealthy threshold.
+    Instead of escalating on a single failure, a failed check increments a counter
     inside a Redis hash for that specific monitor. The system only flags an incident and sends a push notification if a monitor fails three consecutive checks.
 
 
@@ -227,9 +230,11 @@ But that’s the beauty of building in public. Every hard lesson is just enginee
 With the core components in place and fully operational, Still200 is officially live.
 But the work doesn't stop here. There's still a lot more to do, and I'm excited to keep building:
 
-* **More Notification channels**
-* **Expanding the Ecosystem:** Bringing the interface to the desktop with dedicated Web and macOS apps.
-* **Rewrite some components:** I'm especially keeping a close eye on the monitor checker worker.
+* **Lifting the Monitor Limits:** Right now, I have limited the number of monitors to 3 per user as I gather
+  initial feedback and monitor performance. I will be removing this restriction very soon and also introduce a subscription model.
+* **More Notification channels:**
+* **Expanding the Ecosystem:** Bringing the interface to the desktop with dedicated web and macOS apps.
+* **Rewrite some components:** I'm especially keeping a close eye on the checker worker.
   As the number of concurrent monitors scales into the tens of thousands, Python's runtime memory
   footprint and CPU overhead for managing massive event loops can start to climb,
   leading to higher infrastructure costs. I might have to rewrite it in Go or Rust for better performance in future.
