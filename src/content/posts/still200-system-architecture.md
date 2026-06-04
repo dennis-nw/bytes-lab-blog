@@ -43,8 +43,9 @@ That meant minimal moving parts and an architecture I could jump into and debug
 completely on my own if things went sideways at 2 AM.
 Here are the components of my architecture that powers Still200:
 
-* **The Interface (iOS)** - Built natively with Swift and SwiftUI.
-  I chose a native mobile app for the client interface because I'm quite conversant with Swift,
+* **The User Interface (iOS)** - Built natively with Swift and SwiftUI,
+  and available on the [App Store](https://apps.apple.com/us/app/still200/id6770858177).
+  I chose to start with a native mobile app for the client interface because I'm conversant with Swift,
   I find it elegant to write, and offers an incredible user experience.
 * **API** - A purely async REST API built with FastAPI and Python.
 * **Authentication & User Management** - [Supabase Auth](https://supabase.com/docs/guides/auth)
@@ -80,9 +81,6 @@ flowchart TD
     G --> |POST to APN Server|H
     H -.->|push alert to user| A
 ```
-
-
-Next, let's do a deep dive into the components.
 
 ### The Scheduler
 
@@ -226,14 +224,17 @@ But that’s the beauty of building in public. Every hard lesson is just enginee
 ## What's Next for Still200?
 
 With the core components in place and fully operational, Still200 is officially live.
-But the work doesn't stop here. There's still a lot more to do, and I'm excited to keep building::
+But the work doesn't stop here. There's still a lot more to do, and I'm excited to keep building:
+
 * **More Notification channels**
 * **Expanding the Ecosystem:** Bringing the interface to the desktop with dedicated Web and macOS apps.
-* **Deeper latency analytics**
+* **Rewrite some components:** I'm especially keeping a close eye on the monitor checker worker.
+  As the number of concurrent monitors scales into the tens of thousands, Python's runtime memory
+  footprint and CPU overhead for managing massive event loops can start to climb,
+  leading to higher infrastructure costs. I might have to rewrite it in Go or Rust for better performance in future.
 * ...and so much more
 
 Building Still200 reminded me of the absolute joy of stripping away bloated enterprise
 abstractions and solving distributed systems problems with simple, fundamental building blocks.
 
 I hope you enjoyed reading. Happy building!
-
