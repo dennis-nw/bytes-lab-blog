@@ -25,7 +25,7 @@ While I can't share the actual dataset due to data privacy, I wrote a short Pyth
 generate a representative CSV of 5 million rows with four columns: an ID, a timestamp, a transaction amount, and a category.
 The task is to caculate how much was spent for each category.
 The generated file comes in at around 216MB, which is enough to make the differences between approaches very visible.
-You can find the full script and follow along with the complete codebase in the accompanying
+You can find the code and follow along with the complete codebase in the accompanying
 [GitHub Repository](https://github.com/dennis-nw/python-csv-reader-experiments).
 
 ## Approach 1: The Naive Pandas Baseline
@@ -90,7 +90,7 @@ Look at that memory footprint! We dropped from 638.9 MB down to a mere 0.1 MB (1
 Because Python only keeps a single row in flight at any given time, the memory overhead is virtually non-existent.
 
 However, notice the massive trade-off: **Time**. The execution time jumped from 3.51 seconds to 21.36 seconds.
-Because we are looping through 20 million lines line-by-line in pure Python, we lose the blazing-fast,
+Because we are looping through 5 million lines line-by-line in pure Python, we lose the blazing-fast,
 vectorized C-optimizations that Pandas uses under the hood.
 
 ## Approach 3: Pandas with Chunking
