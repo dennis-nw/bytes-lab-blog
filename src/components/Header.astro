@@ -38,9 +38,29 @@ const SubtitleTag = isPost ? 'div' : 'h2'
     >
       <a
         id="site-title-link"
+        class="inline-flex items-center gap-0.25em"
         href={getLocalizedPath('/')}
+        aria-label={headerTitle}
       >
-          {headerTitle}
+        <svg
+          viewBox="0 0 30 26"
+          class="h-0.9em w-auto"
+          aria-hidden="true"
+        >
+          <path
+            d="M1,0 L1,26 M1,0 L10,0 M1,26 L10,26
+               M25,0 L25,26 M25,0 L16,0 M25,26 L16,26"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <circle cx="13" cy="13" r="2.5" fill="#1D9E75" />
+        </svg>
+        <span class="flex flex-col text-0.42em leading-1.15em tracking-0.05em font-sans">
+          <span>BYTES</span>
+          <span class="font-normal tracking-0.45em">LAB</span>
+        </span>
       </a>
     </div>
   </TitleTag>
