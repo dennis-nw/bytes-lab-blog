@@ -84,7 +84,7 @@ async def rc_webhook(
     ...  # Process the webhook event
 ```
 
-# So why not use == or !=?
+# So why not use `==` or `!=`?
 
 When Python evaluates `string1 == string2`, it evaluates characters from left to right and short-circuits the moment it hits a mismatch. If the very first character is wrong, it bails instantly. If the first five characters match before a failure, the operation takes slightly longer.
 
