@@ -61,6 +61,12 @@ as a dependency, so that the request fails if the header value is invalid:
 ```python
 import hmac
 
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+
+from app.subscriptions.schemas import RevenueCatWebhookSchema # defined Pydantic schema
+
+router = APIRouter()
+
 async def verify_rc_headers(request: Request):
     auth_header = request.headers.get("Authorization")
 
