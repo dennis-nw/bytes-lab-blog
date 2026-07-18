@@ -33,7 +33,7 @@ to your webhook URL.
 Your API verifies it against your stored secret before doing any heavy lifting.
 That comparison step turned out to be the most interesting part of the build. It forced me to look closely at a classic vulnerability: **Timing Attacks**.
 
-# Generating secrets in Python
+# Generating the secret
 
 The best way to generate cryptographically strong strings for security-sensitive
 operations is by using... you guessed it right... the `secrets` module 😃
@@ -51,7 +51,7 @@ print(token)
 
 I used `token_urlsafe` to avoid characters that could cause issues in HTTP headers.
 
-# Checking the header in my API
+# Verifying it in my API
 
 Now, in my API, I needed to get this header value and compare it
 to what I generated to verify that the request is indeed coming from
@@ -90,9 +90,12 @@ async def rc_webhook(
     ...  # Process the webhook event
 ```
 
-# So why not use `==` or `!=`?
+# The timing attack: why `==` leaks
 
-When Python evaluates `string1 == string2`, it evaluates characters from left to right and short-circuits the moment it hits a mismatch. If the very first character is wrong, it bails instantly. If the first five characters match before a failure, the operation takes slightly longer.
+When Python evaluates `string1 == string2`, it evaluates characters from left to right
+and short-circuits the moment it hits a mismatch. If the very first character is wrong,
+it bails instantly. If the first five characters match before a failure, the operation
+takes slightly longer.
 
 A wrong guess that matches more of the correct string's prefix
 takes slightly longer to reject than one that matches less. In theory,
