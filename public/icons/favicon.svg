@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 26">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 138 236 236" width="512" height="512" role="img" aria-label="Bytes Lab">
+  <title>Bytes Lab</title>
   <style>
-    path { stroke: #111; }
-    @media (prefers-color-scheme: dark) {
-      path { stroke: #e8e8e6; }
-    }
+    .ink { stroke: #383838; }
+    @media (prefers-color-scheme: dark) { .ink { stroke: #E6E6EA; } }
   </style>
-  <path d="M1,0 L1,26 M1,0 L10,0 M1,26 L10,26
-           M25,0 L25,26 M25,0 L16,0 M25,26 L16,26"
-        fill="none" stroke-width="1.8" stroke-linecap="round"/>
-  <circle cx="13" cy="13" r="2.5" fill="#1D9E75"/>
+  <g class="ink" fill="none" stroke-width="23" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M193 172H150V340H193"/>
+    <path d="M319 172H362V340H319"/>
+  </g>
+  <circle cx="256" cy="256" r="43" fill="#1A9B76"/>
 </svg>
