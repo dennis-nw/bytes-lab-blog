@@ -37,11 +37,13 @@ export const { getStaticPaths, GET } = await OGImageRoute({
       title: {
         families: ['Noto Sans SC'],
         weight: 'Bold',
+        size: 60,
         color: [34, 33, 36],
         lineHeight: 1.5,
       },
       description: {
         families: ['Noto Sans SC'],
+        size: 32,
         color: [72, 71, 74],
         lineHeight: 1.5,
       },

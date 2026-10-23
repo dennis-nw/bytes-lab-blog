@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<!--
+  Source for /public/icons/og-logo.png, the logo stamped on each post's OG card
+  (see src/pages/og/[...image].ts). Mirrors the Bytes Lab logo on byteslab.io.
+  Regenerate with:
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
+    --virtual-time-budget=5000 --default-background-color=00000000 --force-device-scale-factor=2 \
+    --window-size=252,84 --screenshot=public/icons/og-logo.png scripts/og/og-logo.html
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;700&display=block" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 252px;
+      height: 84px;
+      overflow: hidden;
+      background: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 100%;
+      padding: 0 4px;
+    }
+
+    .wordmark {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 34px;
+      line-height: 1;
+      color: #222124;
+    }
+
+    .wordmark .bytes { font-weight: 700; letter-spacing: 0.18em; }
+    .wordmark .lab   { font-weight: 300; letter-spacing: 0.35em; }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <svg width="92" height="75" viewBox="138 160 236 192" aria-hidden="true">
+      <g fill="none" stroke="#383838" stroke-width="23" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M193 172H150V340H193"/>
+        <path d="M319 172H362V340H319"/>
+      </g>
+      <circle cx="256" cy="256" r="43" fill="#1A9B76"/>
+    </svg>
+    <div class="wordmark">
+      <span class="bytes">BYTES</span>
+      <span class="lab">LAB</span>
+    </div>
+  </div>
+</body>
+</html>
