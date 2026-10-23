@@ -2,7 +2,7 @@
 title: The Architecture Behind a Minimalist Uptime Monitor
 published: 2026-06-02T21:05:28.532Z
 description: ''
-updated: ''
+updated: 2026-10-23T12:00:00.000Z
 tags:
   - Still200
   - Architecture
@@ -14,6 +14,12 @@ abbrlink: ''
 ---
 
 ## Introduction
+
+:::note[Update, October 2026]
+The iOS app has been paused in favour of a web app, which is now Still200's main interface
+at [app.still200.com](https://app.still200.com). Alerts now go out by email and Slack.
+This post has been updated to reflect both changes.
+:::
 
 I recently worked on and launched a product that I'm incredibly proud of.
 I created [Still200](https://still200.com), a minimalist API uptime monitoring
@@ -43,17 +49,17 @@ That meant minimal moving parts and an architecture I could jump into and debug
 completely on my own if things went sideways at 2 AM.
 Here are the components of my architecture that powers Still200:
 
-* **The User Interface (iOS)** - Built natively with Swift and SwiftUI,
-  and available on the [App Store](https://apps.apple.com/us/app/still200/id6770858177).
-  I chose to start with a native mobile app for the client interface because I'm conversant with Swift,
-  I find it elegant to write, and offers an incredible user experience.
+* **The User Interface (Web)** - A React web app that runs at [app.still200.com](https://app.still200.com).
+  I originally started with a native iOS app built with Swift and SwiftUI, but I've since
+  paused it in favour of the web app. A browser is where developers already spend their day,
+  and there's nothing to install.
 * **API** - A purely async REST API built with FastAPI, Pydantic schema validation and Python.
 * **Authentication & User Management** - [Supabase Auth](https://supabase.com/docs/guides/auth)
 * **Database** - PostgreSQL hosted on [Supabase](https://supabase.com).
 * **Schedule keeper and Job Dispatcher** - Instead of pulling in a 3rd party library for
   scheduling and task running, I built my own using [Redis sorted sets](https://redis.io/docs/latest/develop/data-types/sorted-sets) to manage high-frequency probing with high precision.
 * **Incident Notifications** - [NATS messaging system](https://nats.io)
-* **Live UI Updates** - Real-time monitoring data streams from the backend to the iOS app for
+* **Live UI Updates** - Real-time monitoring data streams from the backend to the web app for
   UI updates using SSE (Server Sent Events) backed by [Redis pub/sub](https://redis.io/docs/latest/develop/pubsub/).
 * **Observability** - [Pydantic Logfire](https://pydantic.dev/logfire)
 
@@ -62,14 +68,14 @@ in more detail right below.
 
 ```mermaid
 flowchart TD
-    A["iOS app"]
+    A["Web app (React)\napp.still200.com"]
     B["FastAPI Backend"]
     C["Redis\nZSET"]
     D["Background checker workers"]
     E["Target Endpoints\nAPIs · DBs · Services"]
     F["NATS JetStream"]
     G["Notification Workers"]
-    H["APN"]
+    H["Email · Slack"]
 
     A -->|REST API| B
     B -.->|SSE · Redis pub/sub| A
@@ -79,8 +85,7 @@ flowchart TD
     D -->|incident| F
     D -->|ZADD| C
     F -->|incident| G
-    G --> |POST to APN Server| H
-    H -.->|push alert to user| A
+    G -->|send alert| H
 ```
 
 ### The Scheduler
@@ -132,8 +137,8 @@ have been sitting there for too long and maybe recycle them into the main task q
 
 ### Live UI Updates
 
-To make the iOS app feel alive, I wanted real-time updates to the UI as monitors were checked.
-If a user has the app open, they'll notice some monitor details like last check time or even health
+To make the web app feel alive, I wanted real-time updates to the UI as monitors were checked.
+If a user has the dashboard open, they'll notice some monitor details like last check time or even health
 status update. This felt like a massive UX win.
 
 To achieve this, I chose SSE (Server Sent Events). In my case data flow is unidirectional - from server to client.
@@ -146,12 +151,12 @@ Here's how it operates:
 
 1. **Publish**: The moment a background worker finishes an endpoint check, it publishes
   the serialized payload with the latest check results to a specific Redis channel.
-2. **Subscribe**: On the API layer, a dedicated FastAPI streaming endpoint handles open connections from the iOS client. This      endpoint subscribes to the Redis channel at runtime.
-3. **Stream**: As soon as a message drops into the channel, FastAPI yields the data, streaming it instantly across the open HTTP connection straight to the client. The iOS app handles the event and smoothly mutates the UI state.
+2. **Subscribe**: On the API layer, a dedicated FastAPI streaming endpoint handles open connections from the web client. This endpoint subscribes to the Redis channel at runtime.
+3. **Stream**: As soon as a message drops into the channel, FastAPI yields the data, streaming it instantly across the open HTTP connection straight to the client. The web app handles the event and updates the UI in place.
 
 One thing to note is that Redis Pub/Sub offers at-most-once-delivery guarantee.
 I did not mind this because even if an update is missed, it's nothing critical and the
-app does not break. A user would still be able to see up-to-date data if they refresh the monitor list.
+app does not break. A user would still see up-to-date data the next time the monitor list is refreshed.
 
 ### Incidents and Notifications
 
@@ -183,13 +188,10 @@ Serves as a historical source of truth.
 
 On the other end of the stream, I have a notifications worker subscribed.
 Once a message is received, the details from the data are properly formatted based on the notification type.
-Right now, Still200 supports Apple Push Notifications, but I'll be adding more channels
-(email, slack, discord) down the road.
+Right now, Still200 sends alerts by email on every plan, and to a Slack channel on Pro.
 
-The notifications worker, after formatting the payload that APN expects,
-does a `HTTP/2 POST` request to Apple servers which will then deliver the notification
-to the user's app. The message from the stream is then acknowledged.
-All this happens in **under 500ms**.
+The notifications worker formats the payload for each of the user's channels and sends the alert.
+Only once it has been dispatched is the message from the stream acknowledged.
 
 NATS has been quite impressive so far.
 
@@ -216,7 +218,7 @@ Here are a few things I've learnt, and how I solved or I'm planning how to solve
 
     The fix is to implement an explicit unhealthy threshold.
     Instead of escalating on a single failure, a failed check increments a counter
-    inside a Redis hash for that specific monitor. The system only flags an incident and sends a push notification if a monitor fails three consecutive checks.
+    inside a Redis hash for that specific monitor. The system only flags an incident and sends an alert if a monitor fails three consecutive checks.
 
 
 These were just the first few hurdles of bringing Still200 to life.
@@ -233,7 +235,6 @@ But the work doesn't stop here. There's still a lot more to do, and I'm excited 
 * **Lifting the Monitor Limits:** Right now, I have limited the number of monitors to 3 per user as I gather
   initial feedback and monitor performance. I will be removing this restriction very soon and also introduce a subscription model.
 * **More Notification channels**
-* **Expanding the Ecosystem:** Bringing the interface to the desktop with dedicated web and macOS apps.
 * **Rewrite some components:** I'm especially keeping a close eye on the checker worker.
   As the number of concurrent monitors scales into the tens of thousands, Python's runtime memory
   footprint and CPU overhead for managing massive event loops can start to climb,
